@@ -710,106 +710,78 @@ setInterval(fetchRates, 60000); // her 1 dk
 renderPortfolio();
 
 // ── FETCH RATES ──
-// Yahoo Finance proxy — key gerekmez, CORS açık, güvenilir
-async function yahooQuote(symbol) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('yahoo fail: ' + symbol);
-  const data = await res.json();
-  const meta = data?.chart?.result?.[0]?.meta;
-  if (!meta) throw new Error('no meta: ' + symbol);
-  return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
-}
+// Strateji: Tüm veriler tek API çağrısıyla — frankfurter.app
+// XAU (ons altın $), XAG (ons gümüş $), TRY, EUR, GBP hepsini USD bazında döner.
+// CORS tamamen açık, key yok, rate limit yok.
 
 async function fetchRates() {
   prevRates = { ...rates };
+  const GRAM = 1 / 31.1035;
 
-  // 1) Döviz: Yahoo'dan direkt TRY çiftleri
-  const fxSymbols = {
-    USD: 'USDTRY=X',
-    EUR: 'EURTRY=X',
-    GBP: 'GBPTRY=X',
-  };
-
-  // 2) Metaller: Yahoo'dan ons fiyatları (USD)
-  const metalSymbols = {
-    GOLD_OZ: 'GC=F',   // Gold Futures USD/oz
-    SILVER_OZ: 'SI=F', // Silver Futures USD/oz
-  };
-
-  let fxOk = false;
-  let metalOk = false;
-
-  // FX çek
   try {
-    const [usdData, eurData, gbpData] = await Promise.all([
-      yahooQuote(fxSymbols.USD),
-      yahooQuote(fxSymbols.EUR),
-      yahooQuote(fxSymbols.GBP),
-    ]);
-    rates.USD = usdData.price;
-    rates.EUR = eurData.price;
-    rates.GBP = gbpData.price;
-    updateRateCard('usd', rates.USD, prevRates.USD || usdData.prev, '₺');
-    updateRateCard('eur', rates.EUR, prevRates.EUR || eurData.prev, '₺');
-    updateRateCard('gbp', rates.GBP, prevRates.GBP || gbpData.prev, '₺');
-    fxOk = true;
+    // Tek çağrıda tüm ihtiyacımız: TRY, EUR, GBP, XAU, XAG
+    const res = await fetch(
+      'https://api.frankfurter.app/latest?from=USD&to=TRY,EUR,GBP,XAU,XAG'
+    );
+    if (!res.ok) throw new Error('frankfurter fail: ' + res.status);
+    const fx = await res.json();
+    // fx.rates = { TRY: 38.xx, EUR: 0.9x, GBP: 0.7x, XAU: 0.000xxx, XAG: 0.03x }
+
+    const r = fx.rates;
+
+    // Döviz (USD → TRY çevrimi)
+    rates.USD = r.TRY;
+    rates.EUR = r.TRY / r.EUR;
+    rates.GBP = r.TRY / r.GBP;
+
+    // Metaller: 1 USD = r.XAU ons altın → ters çevir: 1 ons = 1/r.XAU USD
+    const goldOzUSD   = 1 / r.XAU;
+    const silverOzUSD = 1 / r.XAG;
+
+    rates.ONS    = goldOzUSD;
+    rates.GOLD   = goldOzUSD   * r.TRY * GRAM;
+    rates.SILVER = silverOzUSD * r.TRY * GRAM;
+
+    updateRateCard('usd',    rates.USD,    prevRates.USD,    '₺');
+    updateRateCard('eur',    rates.EUR,    prevRates.EUR,    '₺');
+    updateRateCard('gbp',    rates.GBP,    prevRates.GBP,    '₺');
+    updateRateCard('gold',   rates.GOLD,   prevRates.GOLD,   '₺');
+    updateRateCard('ons',    rates.ONS,    prevRates.ONS,    '$');
+    updateRateCard('silver', rates.SILVER, prevRates.SILVER, '₺');
+
   } catch(e) {
-    // Fallback döviz
+    console.warn('Kur hatası:', e);
+    // Yedek: sadece döviz
     try {
-      const res = await fetch('https://open.er-api.com/v6/latest/TRY');
-      if (res.ok) {
-        const fx = await res.json();
-        rates.USD = 1 / fx.rates.USD;
-        rates.EUR = 1 / fx.rates.EUR;
-        rates.GBP = 1 / fx.rates.GBP;
-        updateRateCard('usd', rates.USD, prevRates.USD, '₺');
-        updateRateCard('eur', rates.EUR, prevRates.EUR, '₺');
-        updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
-        fxOk = true;
-      }
-    } catch(e2) { console.warn('FX fallback failed', e2); }
-  }
-
-  // Metal çek (FX'e bağımlı değil, ayrı try)
-  try {
-    const [goldData, silverData] = await Promise.all([
-      yahooQuote(metalSymbols.GOLD_OZ),
-      yahooQuote(metalSymbols.SILVER_OZ),
-    ]);
-
-    const goldOzUSD = goldData.price;
-    const silverOzUSD = silverData.price;
-    const usdRate = rates.USD > 0 ? rates.USD : 38; // son bilinen kur
-    const GRAM = 1 / 31.1035;
-
-    rates.ONS = goldOzUSD;
-    rates.GOLD = goldOzUSD * usdRate * GRAM;
-    rates.SILVER = silverOzUSD * usdRate * GRAM;
-
-    updateRateCard('gold', rates.GOLD, prevRates.GOLD || goldData.prev * usdRate * GRAM, '₺');
-    updateRateCard('ons', rates.ONS, prevRates.ONS || goldData.prev, '$');
-    updateRateCard('silver', rates.SILVER, prevRates.SILVER || silverData.prev * usdRate * GRAM, '₺');
-    metalOk = true;
-  } catch(e) {
-    console.warn('Metal fetch failed:', e);
-    // Sabit/cached değer göster
-    if (rates.GOLD === 0) {
-      document.getElementById('rate-gold-val').textContent = 'Veri yok';
-      document.getElementById('rate-silver-val').textContent = 'Veri yok';
-      document.getElementById('rate-ons-val').textContent = 'Veri yok';
+      const res2 = await fetch('https://open.er-api.com/v6/latest/USD');
+      const fx2  = await res2.json();
+      rates.USD = fx2.rates.TRY;
+      rates.EUR = fx2.rates.TRY / fx2.rates.EUR;
+      rates.GBP = fx2.rates.TRY / fx2.rates.GBP;
+      updateRateCard('usd', rates.USD, prevRates.USD, '₺');
+      updateRateCard('eur', rates.EUR, prevRates.EUR, '₺');
+      updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
+      ['gold','ons','silver'].forEach(k => {
+        const el = document.getElementById('rate-' + k + '-val');
+        if (el) el.textContent = 'Veri yok';
+      });
+    } catch(e2) {
+      ['usd','eur','gbp','gold','ons','silver'].forEach(k => {
+        const el = document.getElementById('rate-' + k + '-val');
+        if (el) el.textContent = 'Hata';
+      });
     }
   }
 
-  setUpdateTime(fxOk, metalOk);
+  setUpdateTime();
   renderPortfolio();
   renderStocks();
 }
 
-function setUpdateTime(fxOk, metalOk) {
+function setUpdateTime() {
   const now = new Date();
-  const time = now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-  document.getElementById('lastUpdate').textContent = time;
+  document.getElementById('lastUpdate').textContent =
+    now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
 }
 
 function updateRateCard(key, val, prev, sym) {
