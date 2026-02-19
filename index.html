@@ -710,37 +710,57 @@ setInterval(fetchRates, 60000); // her 1 dk
 renderPortfolio();
 
 // ── FETCH RATES ──
-// Strateji: Tüm veriler tek API çağrısıyla — frankfurter.app
-// XAU (ons altın $), XAG (ons gümüş $), TRY, EUR, GBP hepsini USD bazında döner.
-// CORS tamamen açık, key yok, rate limit yok.
+// Claude API ile web search → anlık fiyatları JSON döner, CORS sorunu yok
 
 async function fetchRates() {
   prevRates = { ...rates };
-  const GRAM = 1 / 31.1035;
+
+  // Loading göster
+  ['usd','eur','gbp','gold','ons','silver'].forEach(k => {
+    const el = document.getElementById('rate-' + k + '-val');
+    if (el && el.textContent === '–') el.innerHTML = '<span class="spinner"></span>';
+  });
 
   try {
-    // Tek çağrıda tüm ihtiyacımız: TRY, EUR, GBP, XAU, XAG
-    const res = await fetch(
-      'https://api.frankfurter.app/latest?from=USD&to=TRY,EUR,GBP,XAU,XAG'
-    );
-    if (!res.ok) throw new Error('frankfurter fail: ' + res.status);
-    const fx = await res.json();
-    // fx.rates = { TRY: 38.xx, EUR: 0.9x, GBP: 0.7x, XAU: 0.000xxx, XAG: 0.03x }
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-calls': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `Sen bir finans asistanısın. Kullanıcı anlık Türkiye döviz ve metal kurlarını soracak.
+Şu anki değerleri web araması yaparak bul ve SADECE aşağıdaki formatta JSON döndür, başka hiçbir şey yazma:
+{"USD":38.50,"EUR":41.20,"GBP":48.30,"GOLD_GRAM_TRY":4200.00,"SILVER_GRAM_TRY":42.00,"GOLD_OZ_USD":3100.00}
+Tüm değerler sayısal olmalı. Türk lirası bazlı değerler için güncel TRY kurlarını kullan.`,
+        messages: [{
+          role: 'user',
+          content: 'Anlık USD/TRY, EUR/TRY, GBP/TRY, gram altın TRY, gram gümüş TRY, ons altın USD fiyatlarını bul ve JSON formatında ver.'
+        }]
+      })
+    });
 
-    const r = fx.rates;
+    if (!response.ok) throw new Error('Claude API: ' + response.status);
+    const data = await response.json();
 
-    // Döviz (USD → TRY çevrimi)
-    rates.USD = r.TRY;
-    rates.EUR = r.TRY / r.EUR;
-    rates.GBP = r.TRY / r.GBP;
+    // Tüm text bloklarını birleştir
+    const text = data.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
 
-    // Metaller: 1 USD = r.XAU ons altın → ters çevir: 1 ons = 1/r.XAU USD
-    const goldOzUSD   = 1 / r.XAU;
-    const silverOzUSD = 1 / r.XAG;
+    // JSON'u parse et
+    const jsonMatch = text.match(/\{[^}]+\}/);
+    if (!jsonMatch) throw new Error('JSON bulunamadı');
+    const prices = JSON.parse(jsonMatch[0]);
 
-    rates.ONS    = goldOzUSD;
-    rates.GOLD   = goldOzUSD   * r.TRY * GRAM;
-    rates.SILVER = silverOzUSD * r.TRY * GRAM;
+    const GRAM = 1 / 31.1035;
+    rates.USD    = prices.USD;
+    rates.EUR    = prices.EUR;
+    rates.GBP    = prices.GBP;
+    rates.GOLD   = prices.GOLD_GRAM_TRY   || (prices.GOLD_OZ_USD * prices.USD * GRAM);
+    rates.ONS    = prices.GOLD_OZ_USD;
+    rates.SILVER = prices.SILVER_GRAM_TRY;
 
     updateRateCard('usd',    rates.USD,    prevRates.USD,    '₺');
     updateRateCard('eur',    rates.EUR,    prevRates.EUR,    '₺');
@@ -750,11 +770,12 @@ async function fetchRates() {
     updateRateCard('silver', rates.SILVER, prevRates.SILVER, '₺');
 
   } catch(e) {
-    console.warn('Kur hatası:', e);
-    // Yedek: sadece döviz
+    console.warn('Claude API hatası, yedek deneyi:', e);
+    // Yedek: sadece döviz (en azından bu çalışsın)
     try {
       const res2 = await fetch('https://open.er-api.com/v6/latest/USD');
-      const fx2  = await res2.json();
+      if (!res2.ok) throw new Error();
+      const fx2 = await res2.json();
       rates.USD = fx2.rates.TRY;
       rates.EUR = fx2.rates.TRY / fx2.rates.EUR;
       rates.GBP = fx2.rates.TRY / fx2.rates.GBP;
@@ -763,7 +784,7 @@ async function fetchRates() {
       updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
       ['gold','ons','silver'].forEach(k => {
         const el = document.getElementById('rate-' + k + '-val');
-        if (el) el.textContent = 'Veri yok';
+        if (el) el.textContent = 'Yenile';
       });
     } catch(e2) {
       ['usd','eur','gbp','gold','ons','silver'].forEach(k => {
