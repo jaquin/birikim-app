@@ -710,90 +710,106 @@ setInterval(fetchRates, 60000); // her 1 dk
 renderPortfolio();
 
 // ── FETCH RATES ──
+// Yahoo Finance proxy — key gerekmez, CORS açık, güvenilir
+async function yahooQuote(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('yahoo fail: ' + symbol);
+  const data = await res.json();
+  const meta = data?.chart?.result?.[0]?.meta;
+  if (!meta) throw new Error('no meta: ' + symbol);
+  return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
+}
+
 async function fetchRates() {
+  prevRates = { ...rates };
+
+  // 1) Döviz: Yahoo'dan direkt TRY çiftleri
+  const fxSymbols = {
+    USD: 'USDTRY=X',
+    EUR: 'EURTRY=X',
+    GBP: 'GBPTRY=X',
+  };
+
+  // 2) Metaller: Yahoo'dan ons fiyatları (USD)
+  const metalSymbols = {
+    GOLD_OZ: 'GC=F',   // Gold Futures USD/oz
+    SILVER_OZ: 'SI=F', // Silver Futures USD/oz
+  };
+
+  let fxOk = false;
+  let metalOk = false;
+
+  // FX çek
   try {
-    // ExchangeRate API (free, no key needed for basic)
-    const [fxRes, metalRes] = await Promise.all([
-      fetch('https://open.er-api.com/v6/latest/TRY'),
-      fetch('https://api.metals.live/v1/spot')
+    const [usdData, eurData, gbpData] = await Promise.all([
+      yahooQuote(fxSymbols.USD),
+      yahooQuote(fxSymbols.EUR),
+      yahooQuote(fxSymbols.GBP),
+    ]);
+    rates.USD = usdData.price;
+    rates.EUR = eurData.price;
+    rates.GBP = gbpData.price;
+    updateRateCard('usd', rates.USD, prevRates.USD || usdData.prev, '₺');
+    updateRateCard('eur', rates.EUR, prevRates.EUR || eurData.prev, '₺');
+    updateRateCard('gbp', rates.GBP, prevRates.GBP || gbpData.prev, '₺');
+    fxOk = true;
+  } catch(e) {
+    // Fallback döviz
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/TRY');
+      if (res.ok) {
+        const fx = await res.json();
+        rates.USD = 1 / fx.rates.USD;
+        rates.EUR = 1 / fx.rates.EUR;
+        rates.GBP = 1 / fx.rates.GBP;
+        updateRateCard('usd', rates.USD, prevRates.USD, '₺');
+        updateRateCard('eur', rates.EUR, prevRates.EUR, '₺');
+        updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
+        fxOk = true;
+      }
+    } catch(e2) { console.warn('FX fallback failed', e2); }
+  }
+
+  // Metal çek (FX'e bağımlı değil, ayrı try)
+  try {
+    const [goldData, silverData] = await Promise.all([
+      yahooQuote(metalSymbols.GOLD_OZ),
+      yahooQuote(metalSymbols.SILVER_OZ),
     ]);
 
-    if (fxRes.ok) {
-      const fx = await fxRes.json();
-      // open.er-api returns TRY as base, so USD = 1/rates.USD
-      if (fx.rates) {
-        prevRates = { ...rates };
-        const usdTRY = 1 / fx.rates.USD;
-        const eurTRY = 1 / fx.rates.EUR;
-        const gbpTRY = 1 / fx.rates.GBP;
+    const goldOzUSD = goldData.price;
+    const silverOzUSD = silverData.price;
+    const usdRate = rates.USD > 0 ? rates.USD : 38; // son bilinen kur
+    const GRAM = 1 / 31.1035;
 
-        rates.USD = usdTRY;
-        rates.EUR = eurTRY;
-        rates.GBP = gbpTRY;
+    rates.ONS = goldOzUSD;
+    rates.GOLD = goldOzUSD * usdRate * GRAM;
+    rates.SILVER = silverOzUSD * usdRate * GRAM;
 
-        updateRateCard('usd', usdTRY, prevRates.USD, '₺');
-        updateRateCard('eur', eurTRY, prevRates.EUR, '₺');
-        updateRateCard('gbp', gbpTRY, prevRates.GBP, '₺');
-      }
-    }
-
-    if (metalRes.ok) {
-      const metals = await metalRes.json();
-      // metals.live returns USD per troy oz
-      const goldOzUSD = metals.find ? metals.find(m => m.metal === 'gold')?.price : null;
-      const silverOzUSD = metals.find ? metals.find(m => m.metal === 'silver')?.price : null;
-
-      if (goldOzUSD && rates.USD > 0) {
-        const gramFactor = 1 / 31.1035;
-        const goldGramTRY = goldOzUSD * rates.USD * gramFactor;
-        rates.GOLD = goldGramTRY;
-        rates.ONS = goldOzUSD;
-        updateRateCard('gold', goldGramTRY, prevRates.GOLD, '₺');
-        updateRateCard('ons', goldOzUSD, prevRates.ONS, '$');
-      }
-
-      if (silverOzUSD && rates.USD > 0) {
-        const gramFactor = 1 / 31.1035;
-        const silverGramTRY = silverOzUSD * rates.USD * gramFactor;
-        rates.SILVER = silverGramTRY;
-        updateRateCard('silver', silverGramTRY, prevRates.SILVER, '₺');
-      }
-    }
-
-    setUpdateTime();
-    renderPortfolio();
-    renderStocks();
+    updateRateCard('gold', rates.GOLD, prevRates.GOLD || goldData.prev * usdRate * GRAM, '₺');
+    updateRateCard('ons', rates.ONS, prevRates.ONS || goldData.prev, '$');
+    updateRateCard('silver', rates.SILVER, prevRates.SILVER || silverData.prev * usdRate * GRAM, '₺');
+    metalOk = true;
   } catch(e) {
-    // Fallback: try alternative
-    try {
-      await fetchRatesFallback();
-    } catch(e2) {
-      document.getElementById('lastUpdate').textContent = 'Bağlantı hatası';
+    console.warn('Metal fetch failed:', e);
+    // Sabit/cached değer göster
+    if (rates.GOLD === 0) {
+      document.getElementById('rate-gold-val').textContent = 'Veri yok';
+      document.getElementById('rate-silver-val').textContent = 'Veri yok';
+      document.getElementById('rate-ons-val').textContent = 'Veri yok';
     }
   }
-}
 
-async function fetchRatesFallback() {
-  // Alternative source
-  const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-  if (!res.ok) throw new Error('fail');
-  const data = await res.json();
-  prevRates = { ...rates };
-  rates.USD = data.rates.TRY;
-  rates.EUR = data.rates.TRY / data.rates.EUR;
-  rates.GBP = data.rates.TRY / data.rates.GBP;
-
-  updateRateCard('usd', rates.USD, prevRates.USD, '₺');
-  updateRateCard('eur', rates.EUR, prevRates.EUR, '₺');
-  updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
-  setUpdateTime();
+  setUpdateTime(fxOk, metalOk);
   renderPortfolio();
+  renderStocks();
 }
 
-function setUpdateTime() {
+function setUpdateTime(fxOk, metalOk) {
   const now = new Date();
-  document.getElementById('lastUpdate').textContent =
-    now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+  const time = now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('lastUpdate').textContent = time;
 }
 
 function updateRateCard(key, val, prev, sym) {
