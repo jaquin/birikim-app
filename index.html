@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Birikimim">
+<meta name="theme-color" content="#0a0a0f">
+<title>Birikimim</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0ede8;
+    --muted: #6b6878;
+    --accent: #c8a96e;
+    --accent2: #7c6fff;
+    --green: #4ade80;
+    --red: #f87171;
+    --gold: #f5c842;
+    --silver: #c0c8d4;
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100%;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: calc(var(--safe-top) + 16px) 20px 14px;
+    background: linear-gradient(180deg, rgba(10,10,15,0.98) 0%, rgba(10,10,15,0.85) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .app-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+
+  .last-update {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pulse-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* ── TOTAL CARD ── */
+  .total-card {
+    background: linear-gradient(135deg, #1a1520 0%, #141420 50%, #1a1820 100%);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin: 14px 16px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .total-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(200,169,110,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .total-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+
+  .total-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .total-usd {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    border-color: rgba(200,169,110,0.3);
+    color: var(--accent);
+  }
+
+  /* ── SCROLL AREA ── */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px calc(var(--safe-bottom) + 80px);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── SECTION ── */
+  .section-title {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 16px 0 8px;
+  }
+
+  /* ── RATE CARDS ── */
+  .rates-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .rate-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .rate-card.updated {
+    border-color: rgba(74,222,128,0.3);
+    animation: flash 0.5s ease;
+  }
+
+  @keyframes flash {
+    0% { background: rgba(74,222,128,0.08); }
+    100% { background: var(--surface); }
+  }
+
+  .rate-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .rate-name {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .rate-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .rate-change {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+
+  .rate-change.up { color: var(--green); }
+  .rate-change.down { color: var(--red); }
+
+  /* ── ASSET ROWS ── */
+  .asset-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .asset-row:active { transform: scale(0.98); }
+
+  .asset-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .asset-icon.usd { background: rgba(74,222,128,0.1); }
+  .asset-icon.eur { background: rgba(124,111,255,0.1); }
+  .asset-icon.gold { background: rgba(245,200,66,0.1); }
+  .asset-icon.silver { background: rgba(192,200,212,0.1); }
+  .asset-icon.stock { background: rgba(248,113,113,0.1); }
+
+  .asset-info { flex: 1; min-width: 0; }
+
+  .asset-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .asset-detail {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .asset-value-col { text-align: right; }
+
+  .asset-try {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+
+  .asset-pnl {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+
+  .asset-pnl.up { color: var(--green); }
+  .asset-pnl.down { color: var(--red); }
+  .asset-pnl.neutral { color: var(--muted); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state .big-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.5; }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed;
+    bottom: calc(var(--safe-bottom) + 20px);
+    right: 20px;
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #c8a96e, #e8c98e);
+    border: none;
+    border-radius: 18px;
+    font-size: 24px;
+    color: #1a1200;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(200,169,110,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 100;
+  }
+
+  .fab:active { transform: scale(0.93); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    width: 100%;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 20px 20px calc(var(--safe-bottom) + 24px);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    border-top: 1px solid var(--border);
+  }
+
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .form-group { margin-bottom: 14px; }
+
+  .form-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .form-select, .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    outline: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-select:focus, .form-input:focus {
+    border-color: rgba(200,169,110,0.4);
+  }
+
+  .form-select option { background: #1a1a24; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #c8a96e, #e8c98e);
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    color: #1a1200;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* ── DETAIL MODAL ── */
+  .detail-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn-danger {
+    flex: 1;
+    background: rgba(248,113,113,0.15);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 12px;
+    padding: 13px;
+    color: var(--red);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .btn-secondary {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .detail-stat {
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .detail-stat-label { font-size: 13px; color: var(--muted); }
+  .detail-stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* ── SPINNER ── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── BORSA SECTION ── */
+  .stock-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .stock-ticker {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .stock-name { font-size: 11px; color: var(--muted); }
+
+  /* Portfolio allocation bar */
+  .alloc-bar {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+
+  .alloc-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <span class="app-title">Birikimim</span>
+      <span class="last-update">
+        <span class="pulse-dot" id="statusDot"></span>
+        <span id="lastUpdate">Güncelleniyor...</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- TOTAL CARD -->
+  <div class="total-card">
+    <div class="total-label">Toplam Birikim</div>
+    <div class="total-value" id="totalTRY">₺0</div>
+    <div class="total-usd" id="totalUSD">≈ $0 · €0</div>
+    <div class="alloc-bar" id="allocBar" style="display:none">
+      <div class="alloc-fill" id="allocFill" style="width:0%;background:var(--gold)"></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('portfolio')">Portföy</button>
+    <button class="tab" onclick="switchTab('rates')">Kurlar</button>
+    <button class="tab" onclick="switchTab('stocks')">Borsa</button>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scrollArea">
+    <!-- Portfolio Tab -->
+    <div id="tab-portfolio">
+      <div class="section-title">Varlıklarım</div>
+      <div id="assetList">
+        <div class="empty-state">
+          <div class="big-icon">💰</div>
+          <p>Henüz varlık eklemediniz.<br>Sağ alttaki <strong style="color:var(--accent)">+</strong> butonuna basın.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rates Tab -->
+    <div id="tab-rates" style="display:none">
+      <div class="section-title">Döviz Kurları</div>
+      <div class="rates-grid">
+        <div class="rate-card" id="card-usd">
+          <span class="rate-icon">🇺🇸</span>
+          <div class="rate-name">Dolar / TRY</div>
+          <div class="rate-value" id="rate-usd-val">–</div>
+          <div class="rate-change" id="rate-usd-chg">–</div>
+        </div>
+        <div class="rate-card" id="card-eur">
+          <span class="rate-icon">🇪🇺</span>
+          <div class="rate-name">Euro / TRY</div>
+          <div class="rate-value" id="rate-eur-val">–</div>
+          <div class="rate-change" id="rate-eur-chg">–</div>
+        </div>
+        <div class="rate-card" id="card-gold">
+          <span class="rate-icon">🥇</span>
+          <div class="rate-name">Gram Altın TRY</div>
+          <div class="rate-value" id="rate-gold-val">–</div>
+          <div class="rate-change" id="rate-gold-chg">–</div>
+        </div>
+        <div class="rate-card" id="card-silver">
+          <span class="rate-icon">🥈</span>
+          <div class="rate-name">Gram Gümüş TRY</div>
+          <div class="rate-value" id="rate-silver-val">–</div>
+          <div class="rate-change" id="rate-silver-chg">–</div>
+        </div>
+        <div class="rate-card" id="card-ons">
+          <span class="rate-icon">⚖️</span>
+          <div class="rate-name">ONS Altın USD</div>
+          <div class="rate-value" id="rate-ons-val">–</div>
+          <div class="rate-change" id="rate-ons-chg">–</div>
+        </div>
+        <div class="rate-card" id="card-gbp">
+          <span class="rate-icon">🇬🇧</span>
+          <div class="rate-name">Sterlin / TRY</div>
+          <div class="rate-value" id="rate-gbp-val">–</div>
+          <div class="rate-change" id="rate-gbp-chg">–</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stocks Tab -->
+    <div id="tab-stocks" style="display:none">
+      <div class="section-title">BIST & Global</div>
+      <div id="stockList"></div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" onclick="openAddModal()" id="fab">+</button>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="addModal" onclick="closeAddModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Varlık Ekle</div>
+
+    <div class="form-group">
+      <label class="form-label">Varlık Türü</label>
+      <select class="form-select" id="assetType" onchange="onTypeChange()">
+        <option value="USD">💵 Dolar (USD)</option>
+        <option value="EUR">💶 Euro (EUR)</option>
+        <option value="GOLD">🥇 Gram Altın</option>
+        <option value="ONS">⚖️ Ons Altın</option>
+        <option value="SILVER">🥈 Gram Gümüş</option>
+        <option value="STOCK">📈 Borsa Hissesi</option>
+        <option value="TRY">🇹🇷 Türk Lirası</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="stockTickerGroup" style="display:none">
+      <label class="form-label">Hisse Kodu (örn: THYAO, AAPL)</label>
+      <input class="form-input" type="text" id="stockTicker" placeholder="THYAO" oninput="this.value=this.value.toUpperCase()">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" id="amountLabel">Miktar</label>
+        <input class="form-input" type="number" id="assetAmount" placeholder="0" step="any" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="costLabel">Alış Maliyeti (TRY)</label>
+        <input class="form-input" type="number" id="assetCost" placeholder="Opsiyonel" step="any" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Not (opsiyonel)</label>
+      <input class="form-input" type="text" id="assetNote" placeholder="örn: Garanti mevduat">
+    </div>
+
+    <button class="btn-primary" onclick="addAsset()">Ekle</button>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" onclick="closeDetailModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="detailTitle">Varlık Detayı</div>
+    <div id="detailContent"></div>
+    <div class="detail-actions">
+      <button class="btn-danger" onclick="deleteAsset()">Sil</button>
+      <button class="btn-secondary" onclick="closeDetailModal()">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let rates = { USD: 0, EUR: 0, GBP: 0, GOLD: 0, SILVER: 0, ONS: 0 };
+let prevRates = { ...rates };
+let assets = JSON.parse(localStorage.getItem('birikim_assets') || '[]');
+let selectedAssetIdx = null;
+let currentTab = 'portfolio';
+let refreshInterval = null;
+
+// ── INIT ──
+fetchRates();
+setInterval(fetchRates, 60000); // her 1 dk
+renderPortfolio();
+
+// ── FETCH RATES ──
+async function fetchRates() {
+  try {
+    // ExchangeRate API (free, no key needed for basic)
+    const [fxRes, metalRes] = await Promise.all([
+      fetch('https://open.er-api.com/v6/latest/TRY'),
+      fetch('https://api.metals.live/v1/spot')
+    ]);
+
+    if (fxRes.ok) {
+      const fx = await fxRes.json();
+      // open.er-api returns TRY as base, so USD = 1/rates.USD
+      if (fx.rates) {
+        prevRates = { ...rates };
+        const usdTRY = 1 / fx.rates.USD;
+        const eurTRY = 1 / fx.rates.EUR;
+        const gbpTRY = 1 / fx.rates.GBP;
+
+        rates.USD = usdTRY;
+        rates.EUR = eurTRY;
+        rates.GBP = gbpTRY;
+
+        updateRateCard('usd', usdTRY, prevRates.USD, '₺');
+        updateRateCard('eur', eurTRY, prevRates.EUR, '₺');
+        updateRateCard('gbp', gbpTRY, prevRates.GBP, '₺');
+      }
+    }
+
+    if (metalRes.ok) {
+      const metals = await metalRes.json();
+      // metals.live returns USD per troy oz
+      const goldOzUSD = metals.find ? metals.find(m => m.metal === 'gold')?.price : null;
+      const silverOzUSD = metals.find ? metals.find(m => m.metal === 'silver')?.price : null;
+
+      if (goldOzUSD && rates.USD > 0) {
+        const gramFactor = 1 / 31.1035;
+        const goldGramTRY = goldOzUSD * rates.USD * gramFactor;
+        rates.GOLD = goldGramTRY;
+        rates.ONS = goldOzUSD;
+        updateRateCard('gold', goldGramTRY, prevRates.GOLD, '₺');
+        updateRateCard('ons', goldOzUSD, prevRates.ONS, '$');
+      }
+
+      if (silverOzUSD && rates.USD > 0) {
+        const gramFactor = 1 / 31.1035;
+        const silverGramTRY = silverOzUSD * rates.USD * gramFactor;
+        rates.SILVER = silverGramTRY;
+        updateRateCard('silver', silverGramTRY, prevRates.SILVER, '₺');
+      }
+    }
+
+    setUpdateTime();
+    renderPortfolio();
+    renderStocks();
+  } catch(e) {
+    // Fallback: try alternative
+    try {
+      await fetchRatesFallback();
+    } catch(e2) {
+      document.getElementById('lastUpdate').textContent = 'Bağlantı hatası';
+    }
+  }
+}
+
+async function fetchRatesFallback() {
+  // Alternative source
+  const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+  if (!res.ok) throw new Error('fail');
+  const data = await res.json();
+  prevRates = { ...rates };
+  rates.USD = data.rates.TRY;
+  rates.EUR = data.rates.TRY / data.rates.EUR;
+  rates.GBP = data.rates.TRY / data.rates.GBP;
+
+  updateRateCard('usd', rates.USD, prevRates.USD, '₺');
+  updateRateCard('eur', rates.EUR, prevRates.EUR, '₺');
+  updateRateCard('gbp', rates.GBP, prevRates.GBP, '₺');
+  setUpdateTime();
+  renderPortfolio();
+}
+
+function setUpdateTime() {
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent =
+    now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function updateRateCard(key, val, prev, sym) {
+  const valEl = document.getElementById(`rate-${key}-val`);
+  const chgEl = document.getElementById(`rate-${key}-chg`);
+  const card = document.getElementById(`card-${key}`);
+  if (!valEl) return;
+
+  valEl.textContent = sym + fmtNum(val);
+
+  if (prev > 0) {
+    const pct = ((val - prev) / prev * 100).toFixed(2);
+    const isUp = val >= prev;
+    chgEl.textContent = (isUp ? '▲ +' : '▼ ') + pct + '%';
+    chgEl.className = 'rate-change ' + (isUp ? 'up' : 'down');
+
+    card.classList.add('updated');
+    setTimeout(() => card.classList.remove('updated'), 600);
+  } else {
+    chgEl.textContent = '–';
+    chgEl.className = 'rate-change';
+  }
+}
+
+// ── PORTFOLIO ──
+function renderPortfolio() {
+  const list = document.getElementById('assetList');
+  if (assets.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="big-icon">💰</div><p>Henüz varlık eklemediniz.<br>Sağ alttaki <strong style="color:var(--accent)">+</strong> butonuna basın.</p></div>`;
+    updateTotalCard(0);
+    return;
+  }
+
+  let total = 0;
+  const rows = assets.map((a, i) => {
+    const tryVal = calcTRY(a);
+    total += tryVal;
+    return { a, i, tryVal };
+  });
+
+  updateTotalCard(total);
+
+  list.innerHTML = rows.map(({ a, i, tryVal }) => {
+    const pnl = a.cost > 0 ? tryVal - a.cost : null;
+    const pnlPct = pnl !== null && a.cost > 0 ? (pnl / a.cost * 100).toFixed(1) : null;
+    const pnlStr = pnl !== null
+      ? `${pnl >= 0 ? '+' : ''}₺${fmtNum(Math.abs(pnl))} (${pnl >= 0 ? '+' : ''}${pnlPct}%)`
+      : a.note || getTypeName(a.type);
+    const pnlClass = pnl === null ? 'neutral' : pnl >= 0 ? 'up' : 'down';
+
+    return `
+    <div class="asset-row" onclick="openDetail(${i})">
+      <div class="asset-icon ${iconClass(a.type)}">${typeIcon(a.type)}</div>
+      <div class="asset-info">
+        <div class="asset-name">${a.ticker || getTypeName(a.type)}${a.note ? ' · ' + a.note : ''}</div>
+        <div class="asset-detail">${fmtNum(a.amount)} ${unitLabel(a.type)} · alış ${a.cost > 0 ? '₺'+fmtNum(a.cost) : '–'}</div>
+      </div>
+      <div class="asset-value-col">
+        <div class="asset-try">₺${fmtNum(tryVal)}</div>
+        <div class="asset-pnl ${pnlClass}">${pnlStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderAllocBar(rows.map(r => ({ tryVal: r.tryVal, type: r.a.type })), total);
+}
+
+function renderAllocBar(items, total) {
+  if (total === 0) return;
+  const bar = document.getElementById('allocBar');
+  const fill = document.getElementById('allocFill');
+  bar.style.display = 'block';
+  const goldPct = items.filter(i => i.type === 'GOLD' || i.type === 'ONS').reduce((s, i) => s + i.tryVal, 0) / total * 100;
+  fill.style.width = goldPct + '%';
+}
+
+function updateTotalCard(total) {
+  document.getElementById('totalTRY').textContent = '₺' + fmtNum(total);
+  const usdVal = rates.USD > 0 ? total / rates.USD : 0;
+  const eurVal = rates.EUR > 0 ? total / rates.EUR : 0;
+  document.getElementById('totalUSD').textContent = `≈ $${fmtNum(usdVal)} · €${fmtNum(eurVal)}`;
+}
+
+function calcTRY(a) {
+  switch(a.type) {
+    case 'USD': return a.amount * (rates.USD || 0);
+    case 'EUR': return a.amount * (rates.EUR || 0);
+    case 'GBP': return a.amount * (rates.GBP || 0);
+    case 'GOLD': return a.amount * (rates.GOLD || 0);
+    case 'ONS': return a.amount * (rates.ONS || 0) * (rates.USD || 0);
+    case 'SILVER': return a.amount * (rates.SILVER || 0);
+    case 'TRY': return a.amount;
+    case 'STOCK': return a.amount * (a.stockPriceTRY || 0);
+    default: return 0;
+  }
+}
+
+// ── STOCKS ──
+const STOCKS_LIST = [
+  { ticker: 'XU100', name: 'BIST 100', note: 'Endeks' },
+  { ticker: 'THYAO', name: 'THY', note: 'Türk Hava Yolları' },
+  { ticker: 'GARAN', name: 'Garanti', note: 'Garanti Bankası' },
+  { ticker: 'ASELS', name: 'Aselsan', note: 'Savunma' },
+  { ticker: 'EREGL', name: 'Ereğli', note: 'Çelik' },
+  { ticker: 'KCHOL', name: 'Koç Holding', note: 'Holding' },
+];
+
+async function renderStocks() {
+  const el = document.getElementById('stockList');
+  el.innerHTML = STOCKS_LIST.map(s => `
+    <div class="stock-row">
+      <div>
+        <div class="stock-ticker">${s.ticker}</div>
+        <div class="stock-name">${s.note}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'DM Mono',monospace;font-size:14px;color:var(--text)" id="sp-${s.ticker}">–</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)" id="sc-${s.ticker}">yükleniyor</div>
+      </div>
+    </div>`).join('');
+
+  // For BIST we use a simple Yahoo Finance proxy
+  for (const s of STOCKS_LIST.slice(0, 3)) {
+    try {
+      const symbol = s.ticker === 'XU100' ? 'XU100.IS' : s.ticker + '.IS';
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) continue;
+      const price = meta.regularMarketPrice;
+      const prev = meta.previousClose;
+      const chg = ((price - prev) / prev * 100).toFixed(2);
+      const isUp = price >= prev;
+
+      const el2 = document.getElementById('sp-' + s.ticker);
+      const el3 = document.getElementById('sc-' + s.ticker);
+      if (el2) el2.textContent = '₺' + fmtNum(price);
+      if (el3) {
+        el3.textContent = (isUp ? '▲ +' : '▼ ') + chg + '%';
+        el3.style.color = isUp ? 'var(--green)' : 'var(--red)';
+      }
+    } catch(e) {}
+  }
+
+  // Mark others as manual
+  STOCKS_LIST.slice(3).forEach(s => {
+    const el2 = document.getElementById('sc-' + s.ticker);
+    if (el2) { el2.textContent = 'manuel giriş'; }
+  });
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['portfolio','rates','stocks'][i] === tab);
+  });
+  ['portfolio','rates','stocks'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.getElementById('fab').style.display = tab === 'portfolio' ? 'flex' : 'none';
+  if (tab === 'stocks') renderStocks();
+}
+
+// ── ADD MODAL ──
+function openAddModal() {
+  document.getElementById('addModal').classList.add('open');
+  document.getElementById('assetType').value = 'USD';
+  document.getElementById('assetAmount').value = '';
+  document.getElementById('assetCost').value = '';
+  document.getElementById('assetNote').value = '';
+  document.getElementById('stockTicker').value = '';
+  onTypeChange();
+  setTimeout(() => document.getElementById('assetAmount').focus(), 350);
+}
+
+function closeAddModal(e) {
+  if (!e || e.target === document.getElementById('addModal')) {
+    document.getElementById('addModal').classList.remove('open');
+  }
+}
+
+function onTypeChange() {
+  const type = document.getElementById('assetType').value;
+  document.getElementById('stockTickerGroup').style.display = type === 'STOCK' ? '' : 'none';
+  const labels = {
+    USD: ['Miktar (USD)', 'Alış Maliyeti (TRY)'],
+    EUR: ['Miktar (EUR)', 'Alış Maliyeti (TRY)'],
+    GOLD: ['Gram Miktarı', 'Alış Maliyeti (TRY)'],
+    ONS: ['Ons Miktarı', 'Alış Maliyeti (TRY)'],
+    SILVER: ['Gram Miktarı', 'Alış Maliyeti (TRY)'],
+    STOCK: ['Adet (lot)', 'Alış Maliyeti (TRY)'],
+    TRY: ['Miktar (TRY)', 'Gider / Maliyet'],
+  };
+  const l = labels[type] || labels.USD;
+  document.getElementById('amountLabel').textContent = l[0];
+  document.getElementById('costLabel').textContent = l[1];
+}
+
+function addAsset() {
+  const type = document.getElementById('assetType').value;
+  const amount = parseFloat(document.getElementById('assetAmount').value);
+  const cost = parseFloat(document.getElementById('assetCost').value) || 0;
+  const note = document.getElementById('assetNote').value.trim();
+  const ticker = document.getElementById('stockTicker').value.trim();
+
+  if (!amount || amount <= 0) {
+    document.getElementById('assetAmount').focus();
+    document.getElementById('assetAmount').style.borderColor = 'var(--red)';
+    setTimeout(() => document.getElementById('assetAmount').style.borderColor = '', 1500);
+    return;
+  }
+
+  const asset = { type, amount, cost, note, ticker, id: Date.now(), stockPriceTRY: 0 };
+  assets.push(asset);
+  save();
+  renderPortfolio();
+  closeAddModal();
+}
+
+// ── DETAIL MODAL ──
+function openDetail(idx) {
+  selectedAssetIdx = idx;
+  const a = assets[idx];
+  const tryVal = calcTRY(a);
+  const pnl = a.cost > 0 ? tryVal - a.cost : null;
+
+  document.getElementById('detailTitle').textContent = a.ticker || getTypeName(a.type);
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-stat">
+      <span class="detail-stat-label">Miktar</span>
+      <span class="detail-stat-value">${fmtNum(a.amount)} ${unitLabel(a.type)}</span>
+    </div>
+    <div class="detail-stat">
+      <span class="detail-stat-label">Güncel Değer</span>
+      <span class="detail-stat-value" style="color:var(--accent)">₺${fmtNum(tryVal)}</span>
+    </div>
+    ${a.cost > 0 ? `<div class="detail-stat">
+      <span class="detail-stat-label">Alış Maliyeti</span>
+      <span class="detail-stat-value">₺${fmtNum(a.cost)}</span>
+    </div>
+    <div class="detail-stat">
+      <span class="detail-stat-label">Kâr / Zarar</span>
+      <span class="detail-stat-value" style="color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">
+        ${pnl >= 0 ? '+' : ''}₺${fmtNum(pnl)} (${(pnl/a.cost*100).toFixed(2)}%)
+      </span>
+    </div>` : ''}
+    ${a.note ? `<div class="detail-stat">
+      <span class="detail-stat-label">Not</span>
+      <span class="detail-stat-value">${a.note}</span>
+    </div>` : ''}
+    <div class="detail-stat">
+      <span class="detail-stat-label">Eklenme</span>
+      <span class="detail-stat-value">${new Date(a.id).toLocaleDateString('tr-TR')}</span>
+    </div>
+  `;
+
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function closeDetailModal(e) {
+  if (!e || e.target === document.getElementById('detailModal')) {
+    document.getElementById('detailModal').classList.remove('open');
+  }
+}
+
+function deleteAsset() {
+  if (selectedAssetIdx === null) return;
+  assets.splice(selectedAssetIdx, 1);
+  save();
+  renderPortfolio();
+  closeDetailModal();
+}
+
+// ── HELPERS ──
+function save() {
+  localStorage.setItem('birikim_assets', JSON.stringify(assets));
+}
+
+function fmtNum(n) {
+  if (!n || isNaN(n)) return '0';
+  if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+  if (n >= 1000) return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:4});
+}
+
+function getTypeName(t) {
+  const map = { USD:'Dolar', EUR:'Euro', GOLD:'Gram Altın', ONS:'Ons Altın', SILVER:'Gram Gümüş', TRY:'TL', STOCK:'Hisse', GBP:'Sterlin' };
+  return map[t] || t;
+}
+
+function unitLabel(t) {
+  const map = { USD:'USD', EUR:'EUR', GOLD:'gr', ONS:'ons', SILVER:'gr', TRY:'₺', STOCK:'adet', GBP:'GBP' };
+  return map[t] || t;
+}
+
+function typeIcon(t) {
+  const map = { USD:'💵', EUR:'💶', GOLD:'🥇', ONS:'⚖️', SILVER:'🥈', TRY:'🇹🇷', STOCK:'📈', GBP:'💷' };
+  return map[t] || '💰';
+}
+
+function iconClass(t) {
+  const map = { USD:'usd', EUR:'eur', GOLD:'gold', ONS:'gold', SILVER:'silver', TRY:'usd', STOCK:'stock', GBP:'eur' };
+  return map[t] || 'usd';
+}
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js")}</script>
+</body>
+</html>
